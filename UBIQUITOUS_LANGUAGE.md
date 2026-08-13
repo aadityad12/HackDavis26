@@ -1,6 +1,6 @@
 # Ubiquitous Language — Clear Dispatch
 
-A human-in-the-loop emergency dispatch support system for wildfire surge events. The AI never speaks to callers — only to the dispatcher. This glossary formalizes domain terminology used across backend, frontend, and integration layers.
+A local emergency-dispatch simulation for wildfire surge events. Most model output supports the dispatcher, while the optional Surge Voice Session uses a browser-based conversational agent with a simulated caller. This glossary formalizes domain terminology used across backend, frontend, and integration layers.
 
 ---
 
@@ -8,8 +8,8 @@ A human-in-the-loop emergency dispatch support system for wildfire surge events.
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **ASSISTED** | Operating mode in which the dispatcher makes all call classification, resource selection, and dispatch decisions; AI provides decision support only. | Standard mode, manual mode |
-| **SURGE** | Operating mode in which AI agents (TRIAGE, RESOURCE, RELAY) automatically handle call classification, resource selection, and briefing generation. | Auto mode, autonomous mode |
+| **ASSISTED** | Operating mode that exposes transcript-scenario intake controlled by the dispatcher. Once a call enters the shared pipeline, TRIAGE, RESOURCE, and RELAY still run automatically; standard units do not require per-call approval. | Standard mode, manual mode |
+| **SURGE** | Operating mode that enables scripted bulk intake, the phone QR flow, and the browser conversational voice agent. It uses the same automatic TRIAGE, RESOURCE, and RELAY pipeline as ASSISTED. | Auto mode, autonomous mode |
 | **Surge threshold** | The call rate (calls/minute) that triggers automatic transition from ASSISTED to SURGE mode. | Threshold, trigger point |
 | **Surge started_at** | Timestamp marking when the system transitioned to SURGE mode. | Surge timestamp |
 
@@ -105,7 +105,7 @@ A human-in-the-loop emergency dispatch support system for wildfire surge events.
 | --- | --- | --- |
 | **Tesla / Waymo metaphor** | Educational framing for judges: **ASSISTED mode = Tesla** (human driver + AI co-pilot providing real-time decision support), **SURGE mode = Waymo** (fully autonomous AI with human approval checkpoints). Illustrates the human-in-the-loop spectrum and escalation strategy. | Analogy, metaphor, instructional framing |
 | **Demo pause** | Dispatcher action (POST /demo/pause) that pauses call generation by setting **simulator lambda** to 0, setting `paused: true` in system_state, and blocking **_run_pipeline()** execution. Conserves API credits during demo. Broadcast as DEMO_PAUSED WS event. | Pause simulator, pause generation, hold demo |
-| **Demo resume** | Dispatcher action (POST /demo/resume) that resumes call generation by restoring prior **simulator lambda**, setting `paused: false`, and re-enabling **_run_pipeline()**. Broadcast as DEMO_RESUMED WS event. | Resume simulator, resume generation, restart demo |
+| **Demo resume** | Dispatcher action (POST /demo/resume) that restarts call generation by restoring prior **simulator lambda**, setting `paused: false`, and re-enabling **_run_pipeline()**. Broadcast as DEMO_RESUMED WS event. | Resume simulator, resume generation, restart demo |
 
 ## New WebSocket Events
 
@@ -143,9 +143,9 @@ A human-in-the-loop emergency dispatch support system for wildfire surge events.
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Session state** | Frontend-only in-memory state stored in React component state: **Call queue**, **Briefing history**, UI state, mode indicator. Volatile; reset to empty on page reload. | Frontend state, UI state, transient state |
-| **Persistent state** | Backend-stored data: **incident_log** (completed incidents), audit trail, system configuration. Survives reconnects and outlives sessions. | Backend state, durable state, database state |
-| **Re-hydration** | Process of a client reconnecting after network loss or page reload; client calls `GET /state` to fetch current system state (mode, call queue, recent incidents) and re-initializes **session state**. | State sync, reconnect sync, state fetch |
-| **Incident log** | Append-only persistent backend log of completed incidents; each entry includes call, severity, incident type, assigned units, hold confirmations, briefing, and audit metadata. Created after RELAY generates a **Briefing** and RESOURCE resolves all **Holds**. | Incident record, history log, audit log |
+| **Backend process state** | In-memory backend data including **incident_log**, calls, holds, resources, and system configuration. It survives a browser reconnect but is lost on backend restart; `/demo/reset` also clears session data. | Backend state, process-local state |
+| **Re-hydration** | A potential state-sync step using `GET /state`. It is not implemented for the current dashboard reducer, which starts with empty call, hold, incident, and agent state after a refresh and waits for new WebSocket events. `MapView` separately fetches state for map fixtures. | State sync, reconnect sync, state fetch |
+| **Incident log** | Process-local list of completed pipeline records. Each entry includes triage, selected unit, hold state, briefing, and audit metadata. It is not stored in a database. | Incident record, history log, audit log |
 
 ## Demo Mode
 
@@ -165,7 +165,7 @@ A human-in-the-loop emergency dispatch support system for wildfire surge events.
 | POST | `/surge/call/initiate` | Initiates a **Surge Voice Session** in SURGE mode; opens VoiceAgentModal for human caller to speak to ElevenLabs Conversational AI. |
 | POST | `/surge/call/complete` | Dispatcher submits completed ElevenLabs voice conversation transcript; Claude Haiku re-extracts fields and feeds into **_run_pipeline()**. |
 | POST | `/demo/pause` | Pauses call generation by setting simulator_lambda to 0; blocks _run_pipeline; broadcasts DEMO_PAUSED. |
-| POST | `/demo/resume` | Resumes call generation by restoring simulator_lambda; re-enables _run_pipeline; broadcasts DEMO_RESUMED. |
+| POST | `/demo/resume` | Restarts call generation by restoring simulator_lambda; re-enables _run_pipeline; broadcasts DEMO_RESUMED. |
 
 ---
 
@@ -175,8 +175,8 @@ A human-in-the-loop emergency dispatch support system for wildfire surge events.
 - **Problem**: Both record past briefing and incident data, but they exist in different layers and have different lifecycles.
 - **Canonical distinction**:
   - **Briefing history** → frontend session state (React component state); array of all briefings received in the current session; volatile; reset on page reload
-  - **Incident log** → backend persistent state (database); append-only record of completed incidents with full audit metadata; survives reconnects
-- **Recommendation**: When discussing dispatcher-facing briefings in the current session, say "the **Briefing history** shows all past briefings." When discussing the authoritative audit trail, say "the **incident log** records completed incidents." Session state is ephemeral; persistent state is the source of truth.
+  - **Incident log** → backend process state; list of completed pipeline records that survives browser reconnects but not a backend restart
+- **Recommendation**: When discussing dispatcher-facing briefings in the current browser session, say "the **Briefing history** shows received briefings." When discussing backend records for the running process, say "the **incident log** records completed incidents." Neither store is durable.
 
 ### 2. "Resource" vs. "Unit"
 - **Problem**: "Resource" is used both as a module name (`state.resources`) and as a synonym for "Unit" in agent code.
