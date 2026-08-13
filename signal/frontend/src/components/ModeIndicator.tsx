@@ -1,5 +1,4 @@
 import { Mode } from '../types'
-import SosQrCode from './SosQrCode'
 
 interface Props {
   mode: Mode
@@ -22,7 +21,6 @@ export default function ModeIndicator({ mode, connected }: Props) {
         )}
       </div>
       <div className="right">
-        {isSurge && <SosQrCode />}
         <span className={`conn-dot ${connected ? 'on' : 'off'}`} />
         <span>{connected ? 'Connected' : 'Disconnected'}</span>
       </div>

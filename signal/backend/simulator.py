@@ -24,9 +24,14 @@ DESCRIPTIONS = [
 async def simulator_loop():
     while True:
         lam = state.simulator_lambda["value"]
-        # Exponential inter-arrival time for Poisson process
+        if lam <= 0:
+            await asyncio.sleep(5)
+            continue
         interval_seconds = random.expovariate(lam / 60)
         await asyncio.sleep(interval_seconds)
+
+        if state.system_state.get("paused"):
+            continue
 
         call_data = {
             "caller_id": f"CALLER-{uuid.uuid4().hex[:6].upper()}",
@@ -36,9 +41,6 @@ async def simulator_loop():
             "reported_type": random.choice(INCIDENT_TYPES),
             "description": random.choice(DESCRIPTIONS),
         }
-
-        if state.system_state.get("paused"):
-            continue
 
         async with httpx.AsyncClient() as client:
             try:

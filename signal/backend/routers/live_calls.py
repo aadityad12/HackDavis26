@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 import uuid
 from datetime import datetime, timezone
 
@@ -11,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 import state
+from agents.utils import extract_json
 from ws.hub import manager
 
 _log = logging.getLogger("clear_dispatch.live_calls")
@@ -28,20 +28,8 @@ class StartLiveRequest(BaseModel):
 
 class EndLiveRequest(BaseModel):
     call_id: str
-
-
-def _extract_json(text: str) -> dict:
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if m:
-        return json.loads(m.group(1))
-    m = re.search(r"\{.*?\}", text, re.DOTALL)
-    if m:
-        return json.loads(m.group(0))
-    raise ValueError("no JSON in response")
+    approved_services: list[str] = []
+    notes: str = ""
 
 
 async def _extract_fields_from_transcript(call_id: str, transcript: str) -> dict:
@@ -73,7 +61,7 @@ Rules:
             max_tokens=256,
             messages=[{"role": "user", "content": prompt}],
         )
-        data = _extract_json(response.content[0].text)
+        data = extract_json(response.content[0].text)
         return {k: v for k, v in data.items() if v is not None and v != ""}
     except Exception as e:
         _log.error("Live extraction failed for call %s: %s", call_id, e)
@@ -204,6 +192,9 @@ async def end_live_call(body: EndLiveRequest):
     if call is None:
         raise HTTPException(status_code=404, detail=f"Call '{body.call_id}' not found")
 
+    if call.get("status") == "PROCESSING":
+        return {"status": "already_processing"}
+
     # Merge latest extracted fields into the call record
     extractions = state.live_extractions.get(body.call_id, {})
     if extractions:
@@ -223,6 +214,8 @@ async def end_live_call(body: EndLiveRequest):
         call["description"] = accumulated[:500]
 
     call["status"] = "PROCESSING"
+    call["approved_services"] = body.approved_services
+    call["dispatcher_notes"] = body.notes
 
     # Run the main pipeline
     asyncio.create_task(_run_pipeline(call))

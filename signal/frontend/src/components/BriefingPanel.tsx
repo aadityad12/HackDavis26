@@ -5,11 +5,9 @@ const DEFAULT_VISIBLE = 3
 
 interface Props {
   briefings: Briefing[]
-  audioBlocked?: boolean
-  onPlayAudio?: () => void
 }
 
-export default function BriefingPanel({ briefings, audioBlocked, onPlayAudio }: Props) {
+export default function BriefingPanel({ briefings }: Props) {
   const [expanded, setExpanded] = useState(false)
   const visible = expanded ? briefings : briefings.slice(0, DEFAULT_VISIBLE)
 
@@ -33,14 +31,9 @@ export default function BriefingPanel({ briefings, audioBlocked, onPlayAudio }: 
               <div key={`${b.call_id}-${b.timestamp}`} style={i > 0 ? { borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8 } : {}}>
                 <div className="briefing-callid">{b.call_id}</div>
                 <div className="briefing-text" style={i > 0 ? { opacity: 0.6, fontSize: 11 } : {}}>{b.text}</div>
-                {i === 0 && (
+                {i === 0 && b.audio_url !== null && (
                   <div className="briefing-meta">
-                    {b.audio_url !== null && !audioBlocked && (
-                      <span className="audio-badge">🔊 Audio available</span>
-                    )}
-                    {b.audio_url !== null && audioBlocked && onPlayAudio && (
-                      <button className="play-button" onClick={onPlayAudio}>▶ Play Briefing</button>
-                    )}
+                    <span className="audio-badge">🔊 Audio available</span>
                   </div>
                 )}
               </div>

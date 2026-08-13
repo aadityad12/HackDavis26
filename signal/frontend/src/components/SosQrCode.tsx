@@ -1,7 +1,20 @@
+import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 
-export default function SosQrCode() {
-  const host = import.meta.env.VITE_SOS_HOST || window.location.hostname
+interface Props {
+  resetKey?: number
+}
+
+export default function SosQrCode({ resetKey = 0 }: Props) {
+  const [host, setHost] = useState<string>(window.location.hostname)
+
+  useEffect(() => {
+    fetch('/api/ip')
+      .then((r) => r.json())
+      .then((d) => { if (d.ip) setHost(d.ip) })
+      .catch(() => {})
+  }, [resetKey])
+
   const { port, protocol } = window.location
   const url = `${protocol}//${host}${port ? `:${port}` : ''}/sos`
 

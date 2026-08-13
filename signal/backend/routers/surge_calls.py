@@ -1,16 +1,14 @@
 import asyncio
-import json
 import logging
-import re
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
 import anthropic
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 import state
+from agents.utils import extract_json
 from ws.hub import manager
 
 _log = logging.getLogger("clear_dispatch.surge_calls")
@@ -20,30 +18,16 @@ _client = anthropic.AsyncAnthropic()
 router = APIRouter()
 
 
-def _extract_json(text: str) -> dict:
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if m:
-        return json.loads(m.group(1))
-    m = re.search(r"\{.*?\}", text, re.DOTALL)
-    if m:
-        return json.loads(m.group(0))
-    raise ValueError("no JSON in response")
-
-
 class InitiateRequest(BaseModel):
-    zone: Optional[str] = "YL-03"
-    lat: Optional[float] = None
-    lon: Optional[float] = None
+    zone: str | None = "YL-03"
+    lat: float | None = None
+    lon: float | None = None
 
 
 class CompleteRequest(BaseModel):
     call_id: str
     transcript: str
-    zone: Optional[str] = None
+    zone: str | None = None
 
 
 @router.post("/surge/call/initiate")
@@ -105,6 +89,9 @@ async def surge_complete(body: CompleteRequest):
     if call is None:
         raise HTTPException(status_code=404, detail=f"Call '{body.call_id}' not found")
 
+    if call.get("status") == "PROCESSING":
+        return {"status": "already_processing", "call_id": body.call_id}
+
     # Use provided zone as fallback if extraction fails
     fallback_zone = body.zone or call.get("zone", "YL-03")
 
@@ -149,7 +136,7 @@ Omit or null out any fields you cannot confidently extract."""
             max_tokens=384,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = _extract_json(response.content[0].text)
+        raw = extract_json(response.content[0].text)
         extracted = {k: v for k, v in raw.items() if v is not None and v != ""}
     except Exception as e:
         _log.error("Surge transcript extraction failed for call %s: %s", body.call_id, e)

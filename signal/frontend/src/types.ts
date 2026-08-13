@@ -2,7 +2,6 @@ export type Mode = 'ASSISTED' | 'SURGE'
 export type Severity = 'CRITICAL' | 'URGENT' | 'STANDARD' | 'PENDING'
 export type AgentName = 'MONITOR' | 'TRIAGE' | 'RESOURCE' | 'RELAY'
 export type AgentStatus = 'IDLE' | 'RUNNING' | 'COMPLETE' | 'ERROR'
-export type CallStatus = 'RINGING' | 'ACTIVE' | 'PROCESSING' | 'DISPATCHED'
 
 export interface Call {
   id: string
@@ -19,7 +18,6 @@ export interface Call {
   live?: boolean
   transcript?: string
   description?: string
-  call_status?: CallStatus
   transcript_id?: string
   live_fields?: {
     location?: string
@@ -45,17 +43,10 @@ export interface CallUpdatedPayload {
   caller_status?: string
   people_affected?: number
   hazards?: string[] | string
-  call_status?: CallStatus
   sex?: string
   age?: number | string
   advice?: string
   service_types?: string[] | string
-}
-
-export interface SurgeVoiceSession {
-  callId: string
-  status: 'connecting' | 'active' | 'ending' | 'done'
-  transcript: string
 }
 
 export interface AgentState {
@@ -69,6 +60,11 @@ export interface HoldEvent {
   unit_id: string
   asset_type: string
   hold_id: string
+  eta_minutes?: number
+  zone?: string
+  severity?: string
+  incident_type?: string
+  description?: string
 }
 
 export interface AuditEntry {
@@ -92,14 +88,13 @@ export interface AppState {
   briefings: Briefing[]
   auditLog: AuditEntry[]
   connected: boolean
-  activeTranscript: string | null
-  surgeVoiceSession: SurgeVoiceSession | null
+  resetKey: number
 }
 
 export type WsMessage =
   | { type: 'DEMO_RESET'; payload: { timestamp: string } }
   | { type: 'MODE_CHANGE'; payload: { mode: Mode; timestamp: string } }
-  | { type: 'CALL_ADDED'; payload: { id: string; severity: Severity; zone: string; vulnerable: boolean; incident_type: string; lat?: number; lon?: number; call_status?: CallStatus } }
+  | { type: 'CALL_ADDED'; payload: { id: string; severity: Severity; zone: string; vulnerable: boolean; incident_type: string; lat?: number; lon?: number } }
   | { type: 'AGENT_STATUS'; payload: { agent: AgentName; status: AgentStatus; last_action: string } }
   | { type: 'UNIT_DISPATCHED'; payload: { call_id: string; unit_id: string; eta_minutes: number } }
   | { type: 'HOLD_REQUIRED'; payload: HoldEvent }

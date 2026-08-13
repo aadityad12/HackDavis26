@@ -42,7 +42,7 @@ async def demo_reset():
 
 @router.post("/start")
 async def demo_start():
-    from routers.calls import process_call
+    from routers.calls import enqueue_call
 
     calls = [
         {
@@ -51,20 +51,20 @@ async def demo_start():
             "lon": -121.7405,
             "zone": "YL-03",
             "reported_type": "fire",
-            "description": "Smoke visible from Russell Boulevard, wind picking up",
+            "description": "Neighbor reports seeing smoke coming from a hillside about a mile away, no flames visible yet, wind is calm",
         },
         {
             "caller_id": "DEMO-002",
             "lat": 38.6812,
             "lon": -121.7731,
             "zone": "YL-01",
-            "reported_type": "evacuation",
-            "description": "Elderly resident at 412 Gibson Road cannot self-evacuate",
+            "reported_type": "medical",
+            "description": "78-year-old woman fell in her kitchen, conscious and talking but says her hip hurts and she cannot get up",
         },
     ]
 
     for call_data in calls:
-        await process_call(call_data)
+        await enqueue_call(call_data)
         await asyncio.sleep(2)
 
     _log.info("Demo started — 2 normal calls injected")
@@ -97,7 +97,7 @@ async def demo_trigger_surge():
             "lon": -121.8100,
             "zone": "YL-05",
             "reported_type": "fire",
-            "description": "Structure fire, multiple units, flames visible from freeway",
+            "description": "Shed fire in backyard, homeowner has a garden hose on it, no wind, neighbors not in danger",
         },
         {
             "caller_id": "SURGE-002",
@@ -105,7 +105,7 @@ async def demo_trigger_surge():
             "lon": -121.7600,
             "zone": "YL-03",
             "reported_type": "evacuation",
-            "description": "Assisted living facility needs immediate evacuation, 40 residents",
+            "description": "Family of four trapped on second floor, fire has cut off stairwell, smoke filling the house, children coughing",
         },
         {
             "caller_id": "SURGE-003",
@@ -113,7 +113,7 @@ async def demo_trigger_surge():
             "lon": -121.9200,
             "zone": "YL-07",
             "reported_type": "medical",
-            "description": "Wildfire smoke inhalation, patient unresponsive",
+            "description": "65-year-old male, chest tightness and shortness of breath from smoke, sitting upright, alert and speaking",
         },
         {
             "caller_id": "SURGE-004",
@@ -121,7 +121,7 @@ async def demo_trigger_surge():
             "lon": -121.6800,
             "zone": "YL-02",
             "reported_type": "fire",
-            "description": "Large wildfire jump, aerial suppression needed urgently, spreading toward residential",
+            "description": "Wildfire has jumped Highway 70, multiple structures burning, fire racing uphill toward dense residential neighborhood, aerial suppression needed immediately",
             "force_heavy_asset": True,
         },
     ]

@@ -35,7 +35,7 @@ def _find_nearest(lat: float, lon: float, prefer_heavy: bool = False) -> dict | 
     return min(pool, key=lambda r: _haversine(lat, lon, r["lat"], r["lon"]))
 
 
-async def resource_agent(call: dict, triage) -> dict:
+async def resource_agent(call: dict) -> dict:
     lat = call.get("lat", 38.5449)
     lon = call.get("lon", -121.7405)
     prefer_heavy = call.get("force_heavy_asset", False)
@@ -85,6 +85,11 @@ async def resource_agent(call: dict, triage) -> dict:
             "unit_id": unit["id"],
             "asset_type": unit["type"],
             "hold_id": hold_id,
+            "eta_minutes": eta_minutes,
+            "zone": call.get("zone", ""),
+            "severity": call.get("severity", "PENDING"),
+            "incident_type": call.get("incident_type", call.get("reported_type", "")),
+            "description": call.get("description", ""),
         })
 
         # Poll for dispatcher confirmation (max 60s)

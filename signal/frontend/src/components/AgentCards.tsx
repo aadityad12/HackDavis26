@@ -1,4 +1,4 @@
-import { AgentName, AgentState, AgentStatus } from '../types'
+import { AgentName, AgentState } from '../types'
 
 interface Props {
   agents: Record<AgentName, AgentState>
@@ -24,7 +24,7 @@ export default function AgentCards({ agents, flashing = {} }: Props) {
       <div className="agents-grid">
         {AGENT_ORDER.map((name) => {
           const agent = agents[name]
-          const status = agent.status.toLowerCase() as AgentStatus
+          const status = agent.status.toLowerCase()
           return (
             <div key={name} className={`agent-card ${flashing[name] ? 'flash' : ''}`}>
               <div className="agent-head">

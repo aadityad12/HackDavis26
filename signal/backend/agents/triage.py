@@ -1,11 +1,10 @@
-import json
 import logging
-import re
 from dataclasses import dataclass
 
 import anthropic
 
 import state
+from agents.utils import extract_json
 from ws.hub import manager
 
 _log = logging.getLogger("clear_dispatch.triage")
@@ -20,20 +19,6 @@ class TriageResult:
     zone: str
     vulnerable: bool
     reasoning: str
-
-
-def _extract_json(text: str) -> dict:
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if m:
-        return json.loads(m.group(1))
-    m = re.search(r"\{.*?\}", text, re.DOTALL)
-    if m:
-        return json.loads(m.group(0))
-    raise ValueError("no JSON in response")
 
 
 async def triage_agent(call: dict) -> TriageResult:
@@ -79,7 +64,7 @@ Rules:
             max_tokens=256,
             messages=[{"role": "user", "content": prompt}],
         )
-        data = _extract_json(response.content[0].text)
+        data = extract_json(response.content[0].text)
         severity = data.get("severity", "URGENT")
         incident_type = data.get("incident_type", incident_type)
         vulnerable = bool(data.get("vulnerable", vulnerable))

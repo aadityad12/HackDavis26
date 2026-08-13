@@ -26,7 +26,8 @@ type: reference
 - **RELAY**: Generates dispatcher briefings; optionally produces TTS audio
 
 ### Call Lifecycle
-- **Call** → initial entry (awaiting triage)
+- **Call** → initial entry (awaiting triage); has internal `status` field (`"LIVE"`, `"SURGE_VOICE"`, `"PROCESSING"`) for lifecycle guards — never broadcast over WebSocket
+- **PROCESSING status** → idempotency guard set when pipeline starts; prevents double execution on re-submit
 - **Incident** → call after TRIAGE, RESOURCE, and RELAY complete; logged to incident_log
 
 ### Resources
@@ -44,6 +45,8 @@ type: reference
 - **Override**: Dispatcher action forcing return to ASSISTED mode; logged as `dispatcher_override: true`
 - **Briefing**: Concise summary: "Incident [ID]. [Severity]. [Zone]. [Type]. Unit [unit_id] dispatched. ETA [N] minutes."
 - **Audio briefing**: TTS-rendered briefing via ElevenLabs (falls back to text-only)
+- **Approved services**: List of service categories dispatcher approved before handing off a live call (`approved_services` on call record + audit trail); from `EndLiveRequest`
+- **Dispatcher notes**: Free-text annotation entered at live-call end; `dispatcher_notes` on call record + audit trail; from `EndLiveRequest`
 
 ### Geographic & Risk
 - **Zone**: Geographic area identifier (YL-01 through YL-08)
@@ -56,6 +59,10 @@ type: reference
 2. **"Incident" lifecycle**: **Call** → awaiting triage; **Incident** → after RELAY briefing generation
 3. **"Override" — action vs field**: Override (action) → `dispatcher_override: true` (field in incident record)
 4. **"Report" — event vs object**: INCIDENT_REPORT (WebSocket event) → incident report payload (data object)
+5. **`status` vs `severity` on call record**: `severity` is domain classification broadcast over WS; `status` is internal pipeline guard only (never in WS payloads)
+
+## Internal Utilities
+- **`extract_json()`** (`agents/utils.py`): shared helper that deserializes Claude LLM responses; tries `json.loads`, fenced-block regex, then bare `{…}` regex; raises `ValueError` on failure. Used by TRIAGE, RELAY, live_calls, surge_calls — previously duplicated per-file.
 
 ## System Events (WebSocket)
 MODE_CHANGE, CALL_ADDED, AGENT_STATUS (IDLE/RUNNING/COMPLETE/ERROR), UNIT_DISPATCHED, HOLD_REQUIRED, HOLD_RESOLVED, BRIEFING_READY, INCIDENT_REPORT

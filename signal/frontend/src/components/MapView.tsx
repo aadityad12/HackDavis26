@@ -13,10 +13,8 @@ interface Props {
 
 interface ApiState {
   fire_perimeter?: GeoJSON.GeoJsonObject
-  resources?: Array<{ id: string; lat: number; lng: number; available: boolean }>
+  resources?: Array<{ id: string; lat: number; lon: number; available: boolean }>
 }
-
-const TOTAL_UNITS = 10
 
 const SEV_COLOR: Record<string, string> = {
   CRITICAL: '#dc2626',
@@ -52,7 +50,8 @@ const MapView = forwardRef<MapHandle, Props>(({ calls, mode }, ref) => {
   const layersRef = useRef<{
     unitMarkers: L.CircleMarker[]
     availCount: number
-  }>({ unitMarkers: [], availCount: TOTAL_UNITS })
+    totalCount: number
+  }>({ unitMarkers: [], availCount: 0, totalCount: 0 })
   const [fireGeoJson, setFireGeoJson] = useState<GeoJSON.GeoJsonObject | null>(null)
 
   useImperativeHandle(ref, () => ({
@@ -85,15 +84,16 @@ const MapView = forwardRef<MapHandle, Props>(({ calls, mode }, ref) => {
 
         if (data.resources) {
           layersRef.current.availCount = data.resources.filter((u) => u.available).length
+          layersRef.current.totalCount = data.resources.length
           layersRef.current.unitMarkers = data.resources.map((unit) =>
-            L.circleMarker([unit.lat, unit.lng], {
+            L.circleMarker([unit.lat, unit.lon], {
               radius: 6,
               color: unit.available ? '#16a34a' : '#475569',
               fillColor: unit.available ? '#22c55e' : '#64748b',
               fillOpacity: unit.available ? 0.95 : 0.7,
               weight: 2,
             })
-              .bindTooltip(`Unit ${unit.id} — ${unit.available ? 'Available' : 'Unavailable'}`, { sticky: true })
+              .bindTooltip(`Unit ${unit.id} — ${unit.available ? 'Available' : 'Dispatched'}`, { sticky: true })
               .addTo(mapRef.current!)
           )
         }
@@ -186,7 +186,7 @@ const MapView = forwardRef<MapHandle, Props>(({ calls, mode }, ref) => {
 
   const stats = useMemo(() => ({
     avail: layersRef.current.availCount,
-    total: TOTAL_UNITS,
+    total: layersRef.current.totalCount,
     calls: calls.length,
   }), [calls.length])
 

@@ -8,3 +8,8 @@ __pycache__/
 .env
 audio/
 *.mp3
+.DS_Store
+Thumbs.db
+*.code-workspace
+*.swp
+*.swo

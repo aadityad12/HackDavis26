@@ -79,13 +79,46 @@ export default function HoldModal({ hold, onConfirm, onCancel }: Props) {
           <div className="modal-asset">
             {ASSET_LABELS[hold.asset_type] ?? `${hold.asset_type} deployment requested`}
           </div>
-          <div className="modal-meta">
-            <div>CALL <span className="v">{hold.call_id}</span></div>
-            <div>UNIT <span className="v">{hold.unit_id}</span></div>
-            <div>HOLD <span className="v">{hold.hold_id}</span></div>
+
+          {/* Incident details row */}
+          <div style={{ display: 'flex', gap: 24, marginBottom: 12, flexWrap: 'wrap' }}>
+            {hold.severity && (
+              <div>
+                <div style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Severity</div>
+                <span className={`badge ${hold.severity.toLowerCase()}`}>{hold.severity}</span>
+              </div>
+            )}
+            {hold.zone && (
+              <div>
+                <div style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Zone</div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', fontFamily: 'var(--ui-mono)' }}>{hold.zone}</span>
+              </div>
+            )}
+            {hold.incident_type && (
+              <div>
+                <div style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Type</div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb', textTransform: 'capitalize' }}>{hold.incident_type}</span>
+              </div>
+            )}
           </div>
+
+          {/* Description */}
+          {hold.description && (
+            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12, lineHeight: 1.5, borderLeft: '2px solid #374151', paddingLeft: 10 }}>
+              {hold.description}
+            </div>
+          )}
+
+          {/* Dispatch details row */}
+          <div className="modal-meta">
+            <div>UNIT <span className="v">{hold.unit_id}</span></div>
+            {hold.eta_minutes != null && <div>ETA <span className="v">{hold.eta_minutes} min</span></div>}
+            <div>CALL <span className="v">{hold.call_id}</span></div>
+          </div>
+
+          {/* Protocol note */}
           <div className="modal-text">
-            This action requires dispatcher approval before proceeding. Heavy assets are deployed only on explicit confirmation per CAL FIRE protocol §4.2.
+            Heavy asset deployment requires dispatcher approval per CAL FIRE protocol §4.2.
           </div>
         </div>
         <div className="modal-footer">

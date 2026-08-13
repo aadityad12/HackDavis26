@@ -23,7 +23,8 @@ class CallRequest(BaseModel):
     description: str
 
 
-async def process_call(call_data: dict) -> dict:
+async def enqueue_call(call_data: dict) -> dict:
+    """Enqueue a call as PENDING without starting the pipeline. Used by demo/start."""
     call_id = str(uuid.uuid4())[:8]
     now = datetime.now(timezone.utc).isoformat()
 
@@ -61,9 +62,19 @@ async def process_call(call_data: dict) -> dict:
         "lon": call["lon"],
     })
 
-    asyncio.create_task(_run_pipeline(call))
-
     return {"call_id": call_id}
+
+
+async def process_call(call_data: dict) -> dict:
+    result = await enqueue_call(call_data)
+    call_id = result["call_id"]
+
+    # Find the call record just enqueued and kick off the pipeline
+    call = next((c for c in state.call_queue if c["id"] == call_id), None)
+    if call is not None:
+        asyncio.create_task(_run_pipeline(call))
+
+    return result
 
 
 async def _stream_description(call: dict) -> None:
@@ -118,7 +129,7 @@ async def _run_pipeline(call: dict) -> None:
         "lon": call["lon"],
     })
 
-    resource_result = await resource_agent(call, triage)
+    resource_result = await resource_agent(call)
 
     # Update call with dispatch info
     for c in state.call_queue:

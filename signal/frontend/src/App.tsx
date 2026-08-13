@@ -45,15 +45,6 @@ export default function App() {
     prevAgentsRef.current = state.agents
   }, [state.agents])
 
-  // Auto-close modal when active call reaches DISPATCHED
-  useEffect(() => {
-    if (!activeCallId) return
-    const call = state.calls.find((c) => c.id === activeCallId)
-    if (!call || call.call_status === 'DISPATCHED') {
-      setActiveCallId(null)
-    }
-  }, [state.calls, activeCallId])
-
   const onMessage = useCallback((msg: WsMessage) => {
     dispatch({ type: 'WS_MESSAGE', message: msg })
   }, [])
@@ -71,23 +62,12 @@ export default function App() {
     dispatch({ type: 'WS_MESSAGE', message: { type: 'HOLD_RESOLVED', payload: { hold_id: holdId, action: 'CANCELLED' } } })
   }, [])
 
-  const handleSelectCall = useCallback(async (callId: string) => {
+  const handleSelectCall = useCallback((callId: string) => {
     const call = state.calls.find((c) => c.id === callId)
     if (!call) return
     if (state.mode === 'SURGE') {
       setActiveSurgeCallId(callId)
       return
-    }
-    if (call.call_status === 'RINGING') {
-      try {
-        await fetch('/api/call/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ call_id: callId }),
-        })
-      } catch {
-        // best-effort — WS will deliver CALL_UPDATED with status ACTIVE regardless
-      }
     }
     setActiveCallId(callId)
   }, [state.calls, state.mode])
@@ -129,10 +109,10 @@ export default function App() {
       </div>
 
       <AuditTrail entries={state.auditLog} />
-      <DemoControls mode={state.mode} />
+      <DemoControls mode={state.mode} onCallAnswered={(id) => setActiveCallId(id)} />
 
       <OverrideButton mode={state.mode} onOverride={() => {}} />
-      {state.mode === 'SURGE' && <SosQrCode />}
+      {state.mode === 'SURGE' && <SosQrCode resetKey={state.resetKey} />}
 
       <HoldModal
         hold={state.activeHold}

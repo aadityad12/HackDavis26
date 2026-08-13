@@ -15,8 +15,7 @@ export const initialState: AppState = {
   briefings: [],
   auditLog: [],
   connected: false,
-  activeTranscript: null,
-  surgeVoiceSession: null,
+  resetKey: 0,
 }
 
 export type Action =
@@ -44,6 +43,7 @@ function handleMessage(state: AppState, msg: WsMessage): AppState {
       return {
         ...initialState,
         connected: state.connected,
+        resetKey: state.resetKey + 1,
         auditLog: [{ timestamp: msg.payload.timestamp || now, type: 'DEMO_RESET', summary: 'Demo reset — UI state cleared' }],
       }
     case 'MODE_CHANGE':
@@ -158,7 +158,6 @@ function handleMessage(state: AppState, msg: WsMessage): AppState {
           transcript: updatedTranscript,
           live_fields: updatedLiveFields,
           severity: updatedSeverity,
-          ...(p.call_status != null ? { call_status: p.call_status } : {}),
         }
       })
       return { ...state, calls }

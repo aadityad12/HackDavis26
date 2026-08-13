@@ -135,7 +135,7 @@ export default function AssistedCallModal({ call, onEndCall, onDismiss }: Props)
             >
               {call.transcript || (
                 <span style={{ color: '#4b5563', fontStyle: 'italic' }}>
-                  {call.call_status === 'RINGING' ? 'Waiting for call to connect…' : 'Transcript will stream in…'}
+                  Transcript will stream in…
                 </span>
               )}
             </div>

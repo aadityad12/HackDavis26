@@ -7,6 +7,7 @@ type DemoPhase = 'standby' | 'demo' | 'surge'
 
 interface Props {
   mode?: Mode
+  onCallAnswered?: (callId: string) => void
 }
 
 interface ButtonState {
@@ -30,7 +31,7 @@ const TRANSCRIPT_OPTIONS = [
   { value: 'hazmat_spill', label: 'Hazmat Spill' },
 ]
 
-export default function DemoControls({ mode }: Props) {
+export default function DemoControls({ mode, onCallAnswered }: Props) {
   const [paused, setPaused] = useState(false)
   const [demoPhase, setDemoPhase] = useState<DemoPhase>('standby')
   const prevMode = useRef<Mode | undefined>(mode)
@@ -99,6 +100,7 @@ export default function DemoControls({ mode }: Props) {
       if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
       setLiveCallId(data.call_id)
+      onCallAnswered?.(data.call_id)
     } catch {
       setAnswerError('Failed to start call')
       setTimeout(() => setAnswerError(null), 3000)

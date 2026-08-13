@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import socket
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -79,6 +80,18 @@ app.include_router(surge_calls.router)
 @app.get("/health")
 async def health():
     return {"status": "ok", "mode": state.system_state["mode"]}
+
+
+@app.get("/ip")
+async def get_server_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        ip = "localhost"
+    return {"ip": ip}
 
 
 @app.websocket("/ws")

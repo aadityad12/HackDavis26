@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
-import { Call, Severity, CallStatus } from '../types'
+import { Call, Severity } from '../types'
 
 interface Props {
   calls: Call[]
@@ -9,29 +9,6 @@ interface Props {
 
 const SEV_RANK: Record<Severity, number> = { CRITICAL: 0, URGENT: 1, STANDARD: 2, PENDING: 3 }
 
-function statusBadgeStyle(status: CallStatus): React.CSSProperties {
-  const base: React.CSSProperties = {
-    fontSize: 9,
-    fontWeight: 700,
-    padding: '2px 7px',
-    borderRadius: 10,
-    letterSpacing: '0.06em',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 4,
-  }
-  switch (status) {
-    case 'RINGING':
-      return { ...base, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)' }
-    case 'ACTIVE':
-      return { ...base, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)' }
-    case 'PROCESSING':
-      return { ...base, background: 'rgba(249,115,22,0.15)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)' }
-    case 'DISPATCHED':
-      return { ...base, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.4)' }
-  }
-}
 
 function CallCard({
   call,
@@ -42,8 +19,7 @@ function CallCard({
   onShowOnMap?: (lat: number, lon: number) => void
   onSelectCall?: (callId: string) => void
 }) {
-  const isInteractive = call.call_status === 'RINGING' || call.call_status === 'ACTIVE'
-  const autoExpand = !isInteractive && call.severity === 'CRITICAL' && call.live === true
+  const autoExpand = call.severity === 'CRITICAL' && call.live === true
   const [expanded, setExpanded] = useState(autoExpand)
   const transcriptRef = useRef<HTMLDivElement>(null)
 
@@ -57,13 +33,11 @@ function CallCard({
     }
   }, [call.transcript, expanded])
 
-  const hasLiveExpandable = !isInteractive && call.live && (call.transcript || call.live_fields)
+  const hasLiveExpandable = call.live && (call.transcript || call.live_fields)
   const hasExpandable = hasLiveExpandable
 
   const handleClick = () => {
-    if (isInteractive && onSelectCall) {
-      onSelectCall(call.id)
-    } else if (!isInteractive && onSelectCall) {
+    if (onSelectCall) {
       onSelectCall(call.id)
     } else if (hasExpandable) {
       setExpanded((e) => !e)
@@ -73,38 +47,16 @@ function CallCard({
   return (
     <div
       className={`call-card ${call.severity.toLowerCase()}`}
-      style={{ cursor: isInteractive || hasExpandable || onSelectCall ? 'pointer' : 'default' }}
+      style={{ cursor: hasExpandable || onSelectCall ? 'pointer' : 'default' }}
       onClick={handleClick}
     >
       <div className="call-row1">
         <span className={`badge ${call.severity.toLowerCase()}`}>{call.severity}</span>
-        {call.call_status && call.call_status !== 'DISPATCHED' && (
-          <span style={statusBadgeStyle(call.call_status)}>
-            {call.call_status === 'RINGING' && (
-              <span style={{ fontSize: 9 }}>📞</span>
-            )}
-            {call.call_status === 'ACTIVE' && (
-              <span style={{
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                background: '#ef4444',
-                display: 'inline-block',
-                animation: 'pulse-dot 1.2s ease-in-out infinite',
-                flexShrink: 0,
-              }} />
-            )}
-            {call.call_status}
-          </span>
-        )}
-        {call.call_status === 'DISPATCHED' && (
-          <span style={statusBadgeStyle('DISPATCHED')}>DISPATCHED</span>
-        )}
         <span className="call-id">{call.id}</span>
         {call.vulnerable && (
           <span className="call-vuln" title="Vulnerable caller — priority response" aria-label="Vulnerable caller">⚠</span>
         )}
-        {call.live && !isInteractive && (
+        {call.live && (
           <span
             className="live-badge"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 4, fontSize: 10, fontWeight: 700, color: '#ef4444', letterSpacing: '0.05em' }}
@@ -130,7 +82,7 @@ function CallCard({
             {expanded ? '▲' : '▼'}
           </span>
         )}
-        {(isInteractive || (!isInteractive && onSelectCall && !hasLiveExpandable)) && (
+        {onSelectCall && !hasLiveExpandable && (
           <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6 }}>→</span>
         )}
       </div>
@@ -150,7 +102,7 @@ function CallCard({
         </button>
       )}
 
-      {expanded && call.live && !isInteractive && (
+      {expanded && call.live && (
         <div
           style={{
             marginTop: 8,
