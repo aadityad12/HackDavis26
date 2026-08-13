@@ -77,7 +77,7 @@ cd Clear-Dispatch
 ```bash
 cd signal/backend
 cp .env.example .env
-uv sync
+uv sync --locked
 uv run python -m uvicorn main:app --reload --port 8000
 ```
 
@@ -94,14 +94,11 @@ The service can start without external API keys. Model calls then use their fall
 
 ```bash
 cd signal/frontend
-npm install
+npm ci
 npm run dev
 ```
 
 Open the HTTPS URL printed by Vite, normally `https://localhost:5173`. Accept the local development certificate warning if your browser presents one. Vite proxies `/api`, `/audio`, and `/ws` to the backend on port 8000.
-
-> [!NOTE]
-> The checked-in lockfiles are currently out of sync with their manifests. `uv sync --locked` and `npm ci` fail on this revision. The commands above perform unlocked dependency resolution and may update lockfile metadata. See [Validation and known issues](#validation-and-known-issues).
 
 ### 4. Run the scripted flow
 
@@ -124,11 +121,7 @@ Backend settings are read from `signal/backend/.env`:
 | `ELEVENLABS_VOICE_ID` | No | `21m00Tcm4TlvDq8ikWAM` | Selects the ElevenLabs voice used for briefing audio. |
 | `SURGE_THRESHOLD` | No | `10` | Number of calls in the 60-second window that must be exceeded to enter Surge Mode. |
 
-The frontend reads one optional setting:
-
-| Variable | Default | Behavior |
-| --- | --- | --- |
-| `VITE_SOS_HOST` | Code fallback: current browser hostname | Overrides the hostname encoded in the Surge Mode phone QR code. The checked-in `.env` currently supplies a machine-specific value, so replace or remove it when testing on another network. |
+The frontend has no required environment variables. The Surge Mode phone QR code requests the backend's `/ip` endpoint and falls back to the current browser hostname. It preserves the page protocol and port when constructing the `/sos` URL.
 
 The browser conversational agent ID is currently embedded in `SosPage.tsx` and `VoiceAgentModal.tsx`. That integration also depends on the external agent remaining public and correctly configured in ElevenLabs.
 
@@ -175,7 +168,7 @@ npm run build
 
 # Backend smoke flow, with the backend already running
 cd ../..
-bash scripts/smoke_test.sh
+PATH="$PWD/signal/backend/.venv/bin:$PATH" bash scripts/smoke_test.sh
 ```
 
 There are no configured lint, backend unit-test, or frontend unit-test commands.
@@ -184,16 +177,16 @@ The following checks were run on the current revision on August 13, 2026:
 
 | Check | Result |
 | --- | --- |
-| `npm run build` using the existing local install | Passed TypeScript compilation and the Vite production build. |
+| `uv sync --locked` | Passed a clean, locked backend dependency installation. |
+| `npm ci` | Passed a clean, locked frontend dependency installation; npm reported 4 audit findings (1 low, 3 high). |
+| `npm run build` | Passed TypeScript compilation and the Vite production build. |
 | Backend import, bytecode compilation, startup, `/health`, and `/state` | Passed using the existing local virtual environment. `/state` loaded 20 units and one polygon feature. |
-| `bash scripts/smoke_test.sh` with system Python | Completed, but skipped its WebSocket assertion because `websockets` was not installed in that interpreter. |
-| Smoke test with the backend virtual environment on `PATH` | Failed because the listener connects after the test call is posted and misses the initial `CALL_ADDED` event. It did receive `BRIEFING_READY`. |
-| `uv sync --locked` | Failed because `uv.lock` does not match `pyproject.toml`. |
-| `npm ci` | Failed because `package.json` and `package-lock.json` disagree on `@vitejs/plugin-basic-ssl`. |
+| Smoke test with the backend virtual environment on `PATH` | Passed all six stages, including health, reset, call intake, `CALL_ADDED`, `BRIEFING_READY`, demo endpoints, and queue population. |
 
 Additional limitations:
 
 - There are no unit or integration test files. The smoke script is the only checked-in executable validation.
+- The smoke script opens its WebSocket after posting the test call, so the `CALL_ADDED` assertion remains timing-sensitive.
 - The GitHub Actions workflow performs an automated pull-request review; it does not build or test the system.
 - Static unit locations, vulnerability scores, transcripts, ETA calculations, and the simplified fire polygon are demonstration fixtures, not validated operational data.
 - Standard units are assigned automatically. Only heavy asset types use the blocking hold approval flow.
@@ -201,8 +194,8 @@ Additional limitations:
 - The dashboard reducer does not rehydrate calls, holds, incidents, or agent status after a refresh; it rebuilds those views from new WebSocket events. `MapView` separately fetches `GET /state` for map fixtures.
 - CORS accepts all origins, and the API has no authentication or authorization.
 - The simulator posts to `localhost:8000`, so changing the backend port requires a code change.
+- A clean `npm ci` currently reports 4 dependency audit findings (1 low, 3 high); these were not remediated as part of the documentation update.
 - There are no releases, deployment configuration, hosted demo, benchmark results, or performance measurements in the repository.
-- `signal/frontend/.env` contains a checked-in machine-specific `VITE_SOS_HOST`; replace it before using the QR flow on another network.
 - `signal/frontend/tsconfig.tsbuildinfo` is a tracked generated build artifact.
 
 ## Contributors and license

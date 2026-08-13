@@ -12,16 +12,16 @@ Local emergency-dispatch simulation for wildfire surge events. Four backend stag
 
 ```bash
 # Backend
-cd signal/backend && uv sync
+cd signal/backend && uv sync --locked
 uv run python -m uvicorn main:app --reload --port 8000
 curl http://localhost:8000/health   # → {"status":"ok","mode":"ASSISTED"}
 curl http://localhost:8000/logs     # → in-memory log buffer (call + briefing events)
 
 # Frontend (alongside backend)
-cd signal/frontend && npm install && npm run dev   # https://localhost:5173
+cd signal/frontend && npm ci && npm run dev   # https://localhost:5173
 
-# Smoke test (backend must be running; the current CALL_ADDED WS assertion has a race)
-bash scripts/smoke_test.sh
+# Smoke test (backend must be running; use the backend environment for websockets)
+PATH="$PWD/signal/backend/.venv/bin:$PATH" bash scripts/smoke_test.sh
 ```
 
 ## Architecture
@@ -119,7 +119,7 @@ Mode transitions and pause/resume log as WARNING. All `ANTHROPIC_API_KEY` / `ELE
 | WebSocket path | `/ws` |
 | API proxy | Vite proxies `/api/*` → `http://127.0.0.1:8000` (strips `/api`) |
 | Frontend WebSocket | `useWebSocket.ts` derives `/ws` from the page origin; Vite proxies it to the backend |
-| Phone QR host | Optional `VITE_SOS_HOST`; otherwise the current page hostname is used |
+| Phone QR host | `SosQrCode` requests `/api/ip`, then falls back to the current page hostname |
 
 **Exact enum strings** (must match across backend and frontend):
 - Mode: `ASSISTED` | `SURGE`
@@ -157,12 +157,7 @@ DEMO_RESUMED    { timestamp }
 | `ELEVENLABS_VOICE_ID` | No | `21m00Tcm4TlvDq8ikWAM` | Briefing TTS voice |
 | `SURGE_THRESHOLD` | No | `10` | calls/min to trigger Surge Mode |
 
-**`signal/frontend/.env`** (optional)
-```
-VITE_SOS_HOST=192.168.1.42
-```
-
-Set `VITE_SOS_HOST` to the development computer's LAN host only when another device must open the QR URL. WebSocket configuration is derived from the current page origin.
+The frontend has no required environment variables. The phone QR code gets the backend host from `/api/ip`, falling back to the current page hostname, and WebSocket configuration is derived from the current page origin.
 
 ## Frontend data flow
 

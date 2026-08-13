@@ -17,8 +17,8 @@ A local emergency-dispatch simulation for wildfire surge events. Most model outp
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Dispatcher** | The human 911 operator; always the human interface between callers and the emergency response system. All final dispatch and override decisions are the dispatcher's responsibility. | Operator, responder, user |
-| **Caller** | The person in crisis who initiates an emergency call. The AI agents never communicate directly with callers. | Person, victim, resident |
+| **Dispatcher** | The human operator who controls Assisted intake, resolves heavy-asset holds, and can override Surge Mode. Standard units are dispatched automatically by the shared pipeline. | Operator, responder, user |
+| **Caller** | The person reporting an emergency. In the optional Surge Voice Session, a simulated caller communicates directly with the browser conversational agent. | Person, victim, resident |
 | **EOC Supervisor** | Emergency Operations Center supervisor; oversees incident command and resource allocation strategy. | Supervisor, commander, incident commander |
 
 ## AI Agents
@@ -52,7 +52,7 @@ A local emergency-dispatch simulation for wildfire surge events. Most model outp
 | **Incident type** | The category of emergency: **fire**, **evacuation**, **medical**, **structure**, or **other**. | Call type, emergency type |
 | **Zone** | A geographic area identifier used for resource allocation and vulnerability tracking (YL-01 through YL-08). | District, sector, geographic zone |
 | **Vulnerability score** | A 0.0–1.0 quantitative score per zone indicating the proportion of at-risk population (elderly, disabled, non-English speakers). Zones with scores > 0.6 are flagged as **vulnerable**. | Risk score, at-risk ratio |
-| **Vulnerable** | Boolean flag on a call (true/false) indicating whether the zone has a high vulnerability score (> 0.6) or the description mentions at-risk populations. When true, resource dispatch prioritizes rapid response. | At-risk, high-vulnerability |
+| **Vulnerable** | Boolean flag on a call indicating whether the zone has a vulnerability score above 0.6 or the description mentions at-risk populations. It is shown in call and map views but does not alter the current resource-ranking calculation. | At-risk, high-vulnerability |
 
 ## Resources and Dispatch
 
@@ -261,7 +261,7 @@ A local emergency-dispatch simulation for wildfire surge events. Most model outp
 - When a live call or surge voice session ends, the call record gains **approved services** and **dispatcher notes** before the pipeline runs; both fields are preserved in the incident audit record.
 
 ### Assisted Mode vs. Surge Mode
-- In **ASSISTED** mode, the **Dispatcher** makes all decisions; AI provides support only (decision support, transcript analysis, briefing generation).
+- In **ASSISTED** mode, the **Dispatcher** controls transcript intake and approved services. The shared pipeline still triages calls and dispatches standard units automatically.
 - In **SURGE** mode, AI agents operate autonomously until a **Briefing** is ready; **HOLD** still requires dispatcher confirmation.
 - **Live Caller Transcription** is an ASSISTED mode feature: dispatcher selects a **pre-transcribed scenario**, backend streams sentences via CALL_UPDATED, Claude extracts fields incrementally.
 - **Surge Voice Session** is a SURGE mode feature: dispatcher initiates a voice conversation between a human caller and **ElevenLabs Conversational AI**; transcript feeds into **_run_pipeline()** on completion.
