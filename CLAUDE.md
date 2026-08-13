@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project: Clear Dispatch
 
-Human-in-the-loop emergency dispatch support for wildfire surge events. Four AI agents (MONITOR, TRIAGE, RESOURCE, RELAY) assist a 911 dispatcher — never callers. HackDavis 2026.
+Local emergency-dispatch simulation for wildfire surge events. Four backend stages (MONITOR, TRIAGE, RESOURCE, RELAY) classify synthetic calls, select units, enforce heavy-asset approval, and prepare dispatcher briefings. The optional Surge Mode browser voice agent does communicate with a simulated caller. HackDavis 2026.
 
 **Demo narrative**: Assisted Mode = Tesla (human driver, AI co-pilot). Surge Mode = Waymo (fully autonomous AI handles callers, dispatcher approves).
 
@@ -12,16 +12,16 @@ Human-in-the-loop emergency dispatch support for wildfire surge events. Four AI 
 
 ```bash
 # Backend
-cd signal/backend && uv sync
-uvicorn main:app --reload --port 8000
+cd signal/backend && uv sync --locked
+uv run python -m uvicorn main:app --reload --port 8000
 curl http://localhost:8000/health   # → {"status":"ok","mode":"ASSISTED"}
 curl http://localhost:8000/logs     # → in-memory log buffer (call + briefing events)
 
 # Frontend (alongside backend)
-cd signal/frontend && npm install && npm run dev   # http://localhost:5173
+cd signal/frontend && npm ci && npm run dev   # https://localhost:5173
 
-# Smoke test (backend must be running; pip install websockets required for WS checks)
-bash scripts/smoke_test.sh
+# Smoke test (backend must be running; use the backend environment for websockets)
+PATH="$PWD/signal/backend/.venv/bin:$PATH" bash scripts/smoke_test.sh
 ```
 
 ## Architecture
@@ -37,7 +37,7 @@ signal/
 │   ├── routers/          calls, live_calls, surge_calls, state_router, override, hold, demo, logs_router
 │   ├── ws/hub.py         ConnectionManager — all WS events go through manager.broadcast(type, payload)
 │   └── data/             park_fire.geojson, resources.json, vulnerability.json, transcripts/
-└── frontend/             React 18 + Vite + Tailwind CSS
+└── frontend/             React 18 + Vite + CSS custom-property design system
     └── src/
         ├── types.ts              All shared TypeScript types (Mode, Severity, WsMessage, AppState, …)
         ├── store/reducer.ts      Pure reducer — every WS message type handled here, auditLog prepended
@@ -118,7 +118,8 @@ Mode transitions and pause/resume log as WARNING. All `ANTHROPIC_API_KEY` / `ELE
 | Frontend port | `5173` |
 | WebSocket path | `/ws` |
 | API proxy | Vite proxies `/api/*` → `http://127.0.0.1:8000` (strips `/api`) |
-| Frontend WS env | `VITE_WS_URL=ws://localhost:8000/ws` in `signal/frontend/.env` |
+| Frontend WebSocket | `useWebSocket.ts` derives `/ws` from the page origin; Vite proxies it to the backend |
+| Phone QR host | `SosQrCode` requests `/api/ip`, then falls back to the current page hostname |
 
 **Exact enum strings** (must match across backend and frontend):
 - Mode: `ASSISTED` | `SURGE`
@@ -151,22 +152,19 @@ DEMO_RESUMED    { timestamp }
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | — | TRIAGE + RELAY agents |
-| `ELEVENLABS_API_KEY` | Yes | — | TTS briefings + Conversational AI |
+| `ANTHROPIC_API_KEY` | No | Unset | Enables model-generated extraction, triage, and briefings; request failures use fallbacks |
+| `ELEVENLABS_API_KEY` | No | Unset | Enables backend TTS briefings; it does not configure the browser conversational agent |
 | `ELEVENLABS_VOICE_ID` | No | `21m00Tcm4TlvDq8ikWAM` | Briefing TTS voice |
 | `SURGE_THRESHOLD` | No | `10` | calls/min to trigger Surge Mode |
 
-**`signal/frontend/.env`** (create if missing)
-```
-VITE_WS_URL=ws://localhost:8000/ws
-```
+The frontend has no required environment variables. The phone QR code gets the backend host from `/api/ip`, falling back to the current page hostname, and WebSocket configuration is derived from the current page origin.
 
 ## Frontend data flow
 
 1. `useWebSocket` receives raw WS text → parses as `WsMessage` → calls `onMessage`
 2. `App.tsx` dispatches `{ type: 'WS_MESSAGE', message }` to `useReducer`
 3. `reducer.ts` handles every message type — updates `calls`, `agents`, `activeHold`, `briefings`, `auditLog`
-4. `BRIEFING_READY` also triggers `new Audio(audio_url).play()` in `App.tsx`; autoplay block falls back to a manual play button
+4. `BRIEFING_READY` stores the optional `audio_url`; the current UI marks audio as available but does not start playback
 5. Agent card flash animation: `App.tsx` tracks previous agent statuses with `useRef`, sets a 600ms flash flag when any agent transitions into `RUNNING`
 6. `CALL_UPDATED` appends transcript snippet to `call.transcript`, merges extracted fields into `call.live_fields`, shows LIVE badge on card
 
